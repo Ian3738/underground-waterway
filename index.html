@@ -298,6 +298,94 @@ textarea{width:100%;min-height:180px;border-radius:12px;background:var(--bg);col
 body.stack main{grid-template-columns:minmax(0,1fr)}
 body.stack .panel{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);align-items:start}
 body.stack .frame{max-width:min(100%,calc((100dvh - 400px) * var(--cols) / var(--rows) + 32px))}
+/* ================= 手機專用介面 ================= */
+@media (max-width:600px){
+  body{font-size:15px}
+  .app{gap:8px;padding-block:8px calc(var(--dock,220px) + 12px)}
+  header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
+  h1{font-size:18px;gap:8px;min-width:0} h1 .tt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  h1 .mascot{width:36px;height:36px;border-width:2px}
+  .tools{gap:6px} .ghostbtn{padding:7px 11px;font-size:14px}
+  .teams{order:3;grid-column:1/-1;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding-bottom:2px;scrollbar-width:none}
+  .teams::-webkit-scrollbar{display:none}
+  .chip{padding:3px 10px 3px 3px;gap:6px;flex:none}
+  .chip .tn{display:none}
+  .chip .av{width:30px;height:30px}
+  .chip .sc{font-size:18px}
+  .chip .prog{width:30px}
+  .chip .streak{font-size:11px;padding:0 5px}
+  main{display:block}
+  .frame{padding:8px;border-radius:14px;max-width:min(100%,calc((100dvh - var(--dock,220px) - 130px) * var(--cols) / var(--rows) + 16px));margin:0 auto}
+  .frame{background:linear-gradient(180deg,#ffffff10,#00000030),url("img/wood.jpg") center/220px}
+  .board{gap:2px;padding:3px;border-radius:8px}
+  .cell{border-radius:5px}
+  .cell .tag{font-size:9px;padding:0 4px}
+  /* 底部操作區 */
+  .panel{position:fixed;left:0;right:0;bottom:0;z-index:12;display:flex;flex-direction:column;gap:8px;max-height:58dvh;overflow-y:auto;
+    padding:10px max(14px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px));
+    border-radius:22px 22px 0 0;background:linear-gradient(180deg,#2e231bf7,#17110cfa),url("img/wood.jpg") center/260px;
+    border-top:1px solid #8a6a4a;box-shadow:0 -12px 30px #000c}
+  .panel::before{content:"";align-self:center;width:44px;height:5px;border-radius:3px;background:#ffffff40;flex:none}
+  .turn,.stage{background:none!important;box-shadow:none!important;border:0!important;padding:0!important;border-radius:0}
+  .tp{grid-template-columns:46px minmax(0,1fr);gap:10px}
+  .tport{width:46px;height:46px;border-radius:12px}
+  .turn .sub{font-size:12px}
+  .turn .who{font-size:22px}
+  .whoc{font-size:14px}
+  .meter{font-size:11px}
+  .stage{gap:10px}
+  .stage h2{font-size:18px}
+  .stage p{display:none}
+  .stage p.warn{display:block;font-size:13px}
+  .big{padding:13px;font-size:21px}
+  /* 動作改成兩欄大按鈕 */
+  .stage .act{grid-template-columns:1fr;justify-items:center;text-align:center;gap:4px;padding:10px 6px}
+  .stage .act > span:last-child > span{display:none}
+  .stage .act b{font-size:15px}
+  .stage .act .ico{width:44px;height:44px}
+  .stage:has(.act){display:grid;grid-template-columns:1fr 1fr}
+  .stage:has(.act) > h2,.stage:has(.act) > p{grid-column:1/-1}
+  .hand{gap:8px} .tile{border-radius:12px}
+  .stage .row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+  .stage .row .small{padding:10px 4px;font-size:13px}
+  /* 跳出視窗改成從下往上的面板 */
+  .modal{align-items:flex-end;padding:0;z-index:20}
+  .sheet{width:100%;max-height:92dvh;border-radius:24px 24px 0 0;border-width:1px 0 0;padding:18px max(16px,env(safe-area-inset-right,0px)) max(18px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));animation:sheetUp .28s ease-out}
+  @keyframes sheetUp{from{transform:translateY(40%);opacity:.4}}
+  .sheet h2{font-size:24px}
+  .prompt{font-size:30px;padding:4px 0}
+  .opts{grid-template-columns:1fr 1fr;gap:10px}
+  .opt{padding:18px 8px;font-size:22px}
+  .evt{grid-template-columns:1fr}.evt .pic{max-width:none;aspect-ratio:16/10}
+  .buzz button{padding:6px 12px 6px 6px;font-size:16px}.buzz img{width:34px;height:34px}
+  .toast{bottom:calc(var(--dock,220px) + 12px);font-size:16px}
+  /* 開場：標題在上、按鈕在下方大拇指好按的位置 */
+  .title .ka{background-position:70% center}
+  .tcenter{padding-top:max(8vh,env(safe-area-inset-top,0px),28px);padding-bottom:max(20px,env(safe-area-inset-bottom,0px))}
+  .logo .l1{font-size:46px}.logo .l2{font-size:60px}
+  .logo .sub{font-size:13px;letter-spacing:.3em}
+  .menu{width:100%;gap:8px}
+  .menu button{padding:14px 18px 14px 46px;font-size:20px}
+  .menu button[data-m="start"]{font-size:24px;padding-block:18px}
+  .menu button:hover,.menu button:focus-visible{transform:none}
+  .tfoot{display:none}
+  /* 選角色：上方大聚光燈，下方小頭像四欄 */
+  .selwrap{gap:10px}
+  .selhead h2{font-size:20px}
+  .slots{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;scrollbar-width:none}
+  .slot{min-width:auto;flex:none;grid-template-columns:40px auto;padding:4px 12px 4px 4px}
+  .slot img,.slot .q{width:40px;height:40px}
+  .spot{flex-direction:column}
+  .spimg{width:150px}
+  .spot>div:not(.spimg){text-align:center}
+  .spname{font-size:30px}
+  .roster{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+  .card{aspect-ratio:1;border-radius:14px}
+  .card .cn{font-size:13px;bottom:4px}
+  .card .own{font-size:10px;padding:1px 6px;top:4px;left:4px}
+  .card:hover,.card:focus-visible{transform:none}
+  .selfoot .big{width:100%}
+}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -544,6 +632,8 @@ function fitLayout(){
   document.body.classList.toggle("stack", W>860&&stack>side*1.12);
 }
 addEventListener("resize",()=>fitLayout());
+(function(){ const pn=document.querySelector(".panel"); const set=()=>{ const h=matchMedia("(max-width:600px)").matches?pn.offsetHeight:0; document.documentElement.style.setProperty("--dock",h+"px"); };
+  if(window.ResizeObserver) new ResizeObserver(set).observe(pn); addEventListener("resize",set); set(); })();
 function render(){
   fitLayout();
   const all=netAll(); const wet=all.wet, inlet=all.inlet;
@@ -551,7 +641,7 @@ function render(){
   const t=S.teams[S.cur];
   // 隊伍
   const bumped=S.teams.map((tm,i)=>lastScores[i]!==undefined&&lastScores[i]!==tm.score); lastScores=S.teams.map(tm=>tm.score);
-  $("teams").innerHTML=S.teams.map((tm,i)=>`<div class="chip ${i===S.cur&&S.phase!=="over"?"on":""}" style="--c:${tm.color}"><img class="av" src="img/${tm.img}.jpg" alt="">${tm.name}<span class="sc${bumped[i]?" bump":""}">${tm.score}</span>${S.race?`<span class="prog" title="水流到的位置"><i style="width:${Math.round(all.far[i]/(S.cols-2)*100)}%"></i></span>`:""}${S.settings.combo&&tm.streak>0?`<span class="streak">連對 ${tm.streak}</span>`:""}</div>`).join("");
+  $("teams").innerHTML=S.teams.map((tm,i)=>`<div class="chip ${i===S.cur&&S.phase!=="over"?"on":""}" style="--c:${tm.color}"><img class="av" src="img/${tm.img}.jpg" alt=""><span class="tn">${tm.name}</span><span class="sc${bumped[i]?" bump":""}">${tm.score}</span>${S.race?`<span class="prog" title="水流到的位置"><i style="width:${Math.round(all.far[i]/(S.cols-2)*100)}%"></i></span>`:""}${S.settings.combo&&tm.streak>0?`<span class="streak">連對 ${tm.streak}</span>`:""}</div>`).join("");
   // 可以點的格子
   const can=new Set(); let ghost=null;
   if(S.phase==="place"){ ghost=S.hand[S.sel]; S.grid.forEach((c,i)=>{if(canPlace(i,ghost,mine.wet,lane)) can.add(i)}); }
