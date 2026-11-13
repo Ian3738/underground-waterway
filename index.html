@@ -301,7 +301,9 @@ body.stack .frame{max-width:min(100%,calc((100dvh - 400px) * var(--cols) / var(-
 /* ================= 手機專用介面 ================= */
 @media (max-width:600px){
   body{font-size:15px}
-  .app{gap:8px;padding-block:8px calc(var(--dock,220px) + 12px)}
+  .app{position:fixed;left:0;right:0;top:0;height:var(--vvh,100dvh);min-height:0;overflow:hidden;gap:8px;padding-block:max(8px,env(safe-area-inset-top,0px)) 0}
+  .screen{bottom:auto;height:var(--vvh,100dvh)}
+  .modal{bottom:auto;height:var(--vvh,100dvh)}
   header{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center}
   h1{font-size:18px;gap:8px;min-width:0} h1 .tt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   h1 .mascot{width:36px;height:36px;border-width:2px}
@@ -317,15 +319,16 @@ body.stack .frame{max-width:min(100%,calc((100dvh - 400px) * var(--cols) / var(-
   .chip .streak{position:absolute;top:-7px;right:-2px;font-size:10px;padding:0 5px;line-height:1.5}
   .chip.on{transform:none}
   .stage:has(#go) > h2{display:none}
-  main{display:block}
-  .frame{padding:8px;border-radius:14px;max-width:min(100%,calc((100dvh - var(--dock,220px) - 130px) * var(--cols) / var(--rows) + 16px));margin:0 auto}
+  main{flex:1;min-height:0;display:flex;flex-direction:column;align-items:stretch;align-content:normal;gap:8px}
+  .boardwrap{flex:1;min-height:0;align-items:center;justify-content:center}
+  .frame{padding:8px;border-radius:14px;max-width:min(100%,calc((var(--bh,300px) - 16px) * var(--cols) / var(--rows) + 16px));margin:0 auto}
   .frame{background:linear-gradient(180deg,#ffffff10,#00000030),url("img/wood.jpg") center/220px}
   .board{gap:2px;padding:3px;border-radius:8px}
   .cell{border-radius:5px}
   .cell .tag{font-size:9px;padding:0 4px}
   /* 底部操作區 */
-  .panel{position:fixed;left:0;right:0;bottom:0;z-index:12;display:flex;flex-direction:column;gap:8px;max-height:58dvh;overflow-y:auto;
-    padding:10px max(14px,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(14px,env(safe-area-inset-left,0px));
+  .panel{position:relative;flex:none;z-index:12;display:flex;flex-direction:column;gap:8px;max-height:none;overflow:visible;margin-left:calc(-1 * max(16px,env(safe-area-inset-left,0px)));margin-right:calc(-1 * max(16px,env(safe-area-inset-right,0px)));
+    padding:10px max(14px,env(safe-area-inset-right,0px)) calc(max(12px,env(safe-area-inset-bottom,0px)) + var(--iosbar,0px)) max(14px,env(safe-area-inset-left,0px));
     border-radius:22px 22px 0 0;background:linear-gradient(180deg,#2e231bf7,#17110cfa),url("img/wood.jpg") center/260px;
     border-top:1px solid #8a6a4a;box-shadow:0 -12px 30px #000c}
   .panel::before{content:"";align-self:center;width:44px;height:5px;border-radius:3px;background:#ffffff40;flex:none}
@@ -353,7 +356,7 @@ body.stack .frame{max-width:min(100%,calc((100dvh - 400px) * var(--cols) / var(-
   .stage .row .small{padding:10px 4px;font-size:13px}
   /* 跳出視窗改成從下往上的面板 */
   .modal{align-items:flex-end;padding:0;z-index:20}
-  .sheet{width:100%;max-height:92dvh;border-radius:24px 24px 0 0;border-width:1px 0 0;padding:18px max(16px,env(safe-area-inset-right,0px)) max(18px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));animation:sheetUp .28s ease-out}
+  .sheet{width:100%;max-height:92dvh;border-radius:24px 24px 0 0;border-width:1px 0 0;padding:18px max(16px,env(safe-area-inset-right,0px)) calc(max(18px,env(safe-area-inset-bottom,0px)) + var(--iosbar,0px)) max(16px,env(safe-area-inset-left,0px));animation:sheetUp .28s ease-out}
   @keyframes sheetUp{from{transform:translateY(40%);opacity:.4}}
   .sheet h2{font-size:24px}
   .prompt{font-size:30px;padding:4px 0}
@@ -364,7 +367,10 @@ body.stack .frame{max-width:min(100%,calc((100dvh - 400px) * var(--cols) / var(-
   .toast{bottom:calc(var(--dock,220px) + 12px);font-size:16px}
   /* 開場：標題在上、按鈕在下方大拇指好按的位置 */
   .title .ka{background-position:70% center}
-  .tcenter{padding-top:max(8vh,env(safe-area-inset-top,0px),28px);padding-bottom:max(20px,env(safe-area-inset-bottom,0px))}
+  .tcenter{padding-top:max(8vh,env(safe-area-inset-top,0px),28px);padding-bottom:calc(max(20px,env(safe-area-inset-bottom,0px)) + var(--iosbar,0px))}
+  .selwrap{padding-bottom:calc(max(14px,env(safe-area-inset-bottom,0px)) + var(--iosbar,0px))}
+  .toast{bottom:calc(var(--dock,220px) + 12px)}
+  :root.ios-safari{--iosbar:84px}
   .logo .l1{font-size:46px}.logo .l2{font-size:60px}
   .logo .sub{font-size:13px;letter-spacing:.3em}
   .menu{width:100%;gap:8px}
@@ -381,9 +387,9 @@ body.stack .frame{max-width:min(100%,calc((100dvh - 400px) * var(--cols) / var(-
   .slot b{font-size:12px} .slot small{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
   .selwrap{grid-template-rows:auto auto auto 1fr}
   .selfoot{align-self:end;align-items:flex-end}
-  .spot{flex-direction:column}
-  .spimg{width:150px}
-  .spot>div:not(.spimg){text-align:center}
+  .spot{flex-direction:row;justify-content:center;gap:16px}
+  .spimg{width:100px}
+  .spot>div:not(.spimg){text-align:left}
   .spname{font-size:30px}
   .roster{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
   .card{aspect-ratio:1;border-radius:14px}
@@ -391,8 +397,16 @@ body.stack .frame{max-width:min(100%,calc((100dvh - 400px) * var(--cols) / var(-
   .card .own{font-size:10px;padding:1px 6px;top:4px;left:4px}
   .card:hover,.card:focus-visible{transform:none}
   .selfoot .big{width:100%;font-size:24px;padding:14px}
-  .spimg{width:min(150px,36vw)}
+
 }
+/* 觸控螢幕不要滑過效果 */
+@media (hover:none){
+  .big:hover,.act:hover,.tile:hover,.opt:hover,.card:hover,.menu button:hover,.small:hover,.ghostbtn:hover{transform:none;filter:none}
+  .act:hover{border-color:#6a5340;box-shadow:inset 0 1px 0 #ffffff1a,0 3px 0 #150f0b,0 6px 12px #0005}
+  .card:hover img{transform:none} .card:hover::before{transform:translateX(-120%)}
+}
+button,.cell,.tile,.card{-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.board,.panel,.hand{touch-action:manipulation}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -456,6 +470,8 @@ body.stack .frame{max-width:min(100%,calc((100dvh - 400px) * var(--cols) / var(-
 
 <script>
 (function(){
+(function(){ try{ const ua=navigator.userAgent; const ios=/iPhone|iPod/.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1&&innerWidth<600);
+  if(ios&&/Safari/.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua)&&!navigator.standalone) document.documentElement.classList.add("ios-safari"); }catch(e){} })();
 const DEFAULT_WORDS = `apple=蘋果
 banana=香蕉
 grape=葡萄
@@ -637,8 +653,17 @@ function fitLayout(){
   const hh=(hd?hd.offsetHeight:80)+40;
   const side=Math.min((W-32-372)/S.cols,(H-hh-40)/S.rows), stack=Math.min((W-32)/S.cols,(H-hh-300)/S.rows);
   document.body.classList.toggle("stack", W>860&&stack>side*1.12);
+  requestAnimationFrame(()=>{ const bw=document.querySelector(".boardwrap"); if(bw) document.documentElement.style.setProperty("--bh",Math.max(120,bw.clientHeight)+"px"); });
 }
 addEventListener("resize",()=>fitLayout());
+(function(){
+  const root=document.documentElement, bw=document.querySelector(".boardwrap");
+  const setV=()=>{ const h=window.visualViewport?visualViewport.height:innerHeight; root.style.setProperty("--vvh",Math.round(h)+"px"); };
+  const setB=()=>{ root.style.setProperty("--bh",Math.max(120,bw.clientHeight)+"px"); };
+  setV(); setB(); addEventListener("resize",()=>{setV();setB();}); addEventListener("orientationchange",()=>setTimeout(()=>{setV();setB();},300));
+  if(window.visualViewport){ visualViewport.addEventListener("resize",()=>{setV();setB();}); }
+  if(window.ResizeObserver) new ResizeObserver(setB).observe(bw);
+})();
 (function(){ const pn=document.querySelector(".panel"); const set=()=>{ const h=matchMedia("(max-width:600px)").matches?pn.offsetHeight:0; document.documentElement.style.setProperty("--dock",h+"px"); };
   if(window.ResizeObserver) new ResizeObserver(set).observe(pn); addEventListener("resize",set); set(); })();
 function render(){
@@ -1103,6 +1128,20 @@ function sfx(kind){
   }catch(e){}
 }
 labels();
+
+/* ---------- 觸控：手指放開就執行（iPhone Safari 有時第一下點擊會被吃掉） ---------- */
+(function(){
+  let down=null, last=0;
+  const pick=e=>e.target&&e.target.closest?e.target.closest("button,.cell.can"):null;
+  document.addEventListener("pointerdown",e=>{ if(e.pointerType!=="touch"){down=null;return;} const el=pick(e); down=el?{el,x:e.clientX,y:e.clientY,t:Date.now()}:null; },true);
+  document.addEventListener("pointercancel",()=>{down=null;},true);
+  document.addEventListener("pointerup",e=>{
+    if(e.pointerType!=="touch"||!down) return; const d=down; down=null; const el=pick(e);
+    if(!el||el!==d.el||el.disabled||Math.hypot(e.clientX-d.x,e.clientY-d.y)>12||Date.now()-d.t>900) return;
+    last=Date.now(); e.preventDefault(); el.click();
+  },true);
+  document.addEventListener("click",e=>{ if(e.isTrusted&&Date.now()-last<700){ e.stopPropagation(); e.preventDefault(); } },true);
+})();
 
 /* ---------- 開始 ---------- */
 ["source","cardback","treasure","wall","boulder","ev_rock","ev_pipe","ev_map","char1","char2","char3","char4","char5","char6","char7","char8","keyart"].forEach(n=>{const i=new Image();i.src=`img/${n}.jpg`;});
