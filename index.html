@@ -545,7 +545,7 @@ function newGame(settings,picks){
   if(S.words.length<4) S.words=parseWords(DEFAULT_WORDS);
   prevWet=new Set(); lastScores=[]; render();
 }
-const evEvery=()=>S.race?S.teams.length*3:4;
+const evEvery=()=>S.race?S.teams.length*3:({1:4,2:3,3:4,4:5})[S.teams.length]||4;
 
 /* ---------- 水流計算 ---------- */
 function maskOf(c){ if(c.type==="start") return 7; if(c.type==="pipe") return c.broken?0:c.mask; return 0; }
@@ -703,7 +703,7 @@ function renderStage(wet,lane){
     if(nr) h+=`<button class="act" data-a="rock" type="button"><span class="ico">${IMG("boulder")}</span><span><b>敲掉石頭</b><span>把擋路的大石頭清掉</span></span></button>`;
     if(canThrow) h+=`<button class="act" data-a="throw" type="button"><span class="ico">${IMG("ev_rock")}</span><span><b>丟石頭給別組</b><span>擋住別組的路口，一局只能用一次</span></span></button>`;
     if(nx) h+=`<button class="act" data-a="remove" type="button"><span class="ico">${PICK_SVG}</span><span><b>拆掉一段水管</b><span>放錯了、或路被死路堵住時用</span></span></button>`;
-    if(np) h+=`<button class="act" data-a="peek" type="button"><span class="ico">${IMG("cardback")}</span><span><b>偷看終點</b><span>翻開一張終點看三秒，記住寶藏在哪</span></span></button>`;
+    if(np) h+=`<button class="act" data-a="peek" type="button"><span class="ico">${IMG("cardback")}</span><span><b>探照終點</b><span>翻開一張終點卡，全班都看得到是寶藏還是石壁</span></span></button>`;
     st.innerHTML=h;
     st.querySelectorAll(".act").forEach(btn=>btn.onclick=()=>{
       const k=btn.dataset.a; if(k==="place"){S.phase="place";S.sel=0;} else {S.phase="pick";S.pick=k;S.free=false;} render();});
@@ -723,7 +723,7 @@ function renderStage(wet,lane){
     const txt={repair:["修水管","點有紅色裂痕的水管，就能修好。"],rock:["敲掉石頭","點一顆擋路的石頭，把它敲掉。"],
       remove:["拆掉一段水管","點一段想拆掉的水管，那一格會變回空地。"],
       throw:["丟石頭給別組","點別組跑道上發亮的格子，丟一顆石頭擋住他們。"],
-      peek:["偷看終點",S.race?"點你們跑道右邊的一張終點卡，翻開看三秒鐘。":"點右邊一張終點卡，翻開看三秒鐘。"]}[S.pick];
+      peek:["探照終點",S.race?"點你們跑道右邊的一張終點卡，把它翻開。":"點右邊一張終點卡，把它翻開。"]}[S.pick];
     st.innerHTML=`<h2>${txt[0]}</h2><p>${txt[1]}</p>${S.free||S.peek!=null?"":`<div class="row"><button class="small" id="back" type="button">回上一步</button></div>`}`;
     const bk=$("back"); if(bk) bk.onclick=()=>{S.phase="action";render();};
   } else if(S.phase==="over"){
@@ -754,7 +754,10 @@ function onCell(i){
   }
 }
 function doPeek(i){
-  if(S.peek!=null) return;
+  const g=S.grid[i]; if(g.revealed) return;
+  g.revealed=true; sfx(g.treasure?"ok":"place");
+  toast(g.treasure?"找到寶藏的位置了！快把水接過去":"這裡是石壁，換個方向挖");
+  render(); endAction(); return;
   S.peek=i; S.grid[i].peeked=true; render();
   toast("看清楚喔，三秒鐘！");
   clearTimeout(peekTimer);
@@ -799,11 +802,12 @@ function triggerEvent(){
   const lanes=[...Array(S.lanes).keys()];
   const info=lanes.map(L=>{const {wet}=network(L); return {L,front:frontier(L),pipes:[...wet.keys()].filter(i=>S.grid[i].type==="pipe")};});
   let r=Math.random(), kind;
-  if(r<.4) kind="rock"; else if(r<.75) kind="break"; else kind=S.race?"rock":"map";
+  if(r<.38) kind="rock"; else if(r<.72) kind="break"; else kind="map";
   const anyFront=info.some(x=>x.front.length), anyPipes=info.some(x=>x.pipes.length>=2);
-  const unrevealed=candidates("peek",0);
+  const walls=lanes.map(L=>candidates("peek",L).filter(i=>!S.grid[i].treasure));
+  const unrevealed=walls.flat();
   if(kind==="break"&&!anyPipes) kind="rock";
-  if(kind==="rock"&&!anyFront) kind=(!S.race&&unrevealed.length)?"map":"break";
+  if(kind==="rock"&&!anyFront) kind=unrevealed.length?"map":"break";
   if(kind==="map"&&!unrevealed.length) kind="rock";
   const all=S.race?"每一條跑道都":"";
   if(kind==="rock"&&anyFront){
@@ -813,8 +817,8 @@ function triggerEvent(){
     info.forEach(x=>{ if(x.pipes.length){ const i=x.pipes[rnd(x.pipes.length)]; S.grid[i].broken=true; }}); render();
     eventModal(IMG("ev_pipe"),"嘶嘶嘶～水管破了",`${all}有一段水管裂開了，水流不過去。之後答對題目，可以選「修水管」把它修好。`);
   } else if(kind==="map"){
-    S.phase="pick"; S.pick="peek"; S.free=true; render();
-    eventModal(IMG("ev_map"),"撿到藏寶圖碎片！",`${S.teams[S.cur].name}可以免費偷看一張終點卡三秒鐘。按「知道了」以後，點右邊一張終點卡。`);
+    walls.forEach(w=>{ if(w.length) S.grid[w[rnd(w.length)]].revealed=true; }); render();
+    eventModal(IMG("ev_map"),"撿到藏寶圖碎片！",S.race?"每一條跑道的地圖上，都有一張終點卡被翻開了：那裡是石壁，別往那邊挖！":"地圖上有一張終點卡被翻開了：那裡是石壁，別往那邊挖！");
   }
 }
 function eventModal(svg,title,text){
@@ -908,9 +912,9 @@ $("btnRules").onclick=()=>{
    : `<li>這一局是<b>全班合作</b>：左邊是水源，右邊有三張終點卡，只有一張底下藏著寶藏。</li>
       <li>水流到寶藏，全班一起過關，接通的那組多拿 3 顆星。</li>`;
   li+=`<li>各組輪流抽一題英文。<b>答對</b>拿 1 顆星，還可以挑一件事做；<b>答錯</b>就換下一組。</li>
-    <li>可以做的事：接一段水管、修水管、敲掉石頭、拆掉一段水管，或偷看一張終點卡三秒${S.race&&s.throwRock?"；每組一局還能丟一次石頭給別組":""}。</li>
+    <li>可以做的事：接一段水管、修水管、敲掉石頭、拆掉一段水管，或探照終點（翻開一張終點卡，全班都看得到）${S.race&&s.throwRock?"；每組一局還能丟一次石頭給別組":""}。</li>
     <li>水管一定要接在<b>已經有水</b>的地方，而且開口不能朝向地圖外面${S.race?"或別組的跑道":""}，地圖上會發亮提示。流到石壁就換條路。</li>
-    <li>每 ${evEvery()} 回合地底會出事：可能落石、水管破掉${S.race?"，每條跑道都一樣":"，或撿到藏寶圖"}。</li>`;
+    <li>每 ${evEvery()} 回合地底會出事：可能落石、水管破掉，或撿到藏寶圖自動翻開一張石壁${S.race?"，每條跑道都一樣":""}。</li>`;
   if(s.timer) li+=`<li>每題限時 <b>${s.timer} 秒</b>，${Math.round(s.timer/3)} 秒內答對拿 2 顆星。</li>`;
   if(s.combo) li+=`<li><b>連勝獎勵</b>：同一組連對三題，可以多做一件事。</li>`;
   if(s.buzz&&S.teams.length>1) li+=`<li><b>搶答回合</b>：每 ${BUZZ_EVERY} 回合來一題搶答，答對的組可以做一件事。</li>`;
