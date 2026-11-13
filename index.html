@@ -11,7 +11,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;800&family=Dela+Gothic+One&family=LXGW+WenKai+TC:wght@400;700&family=Noto+Sans+TC:wght@500;700;900&display=swap">
 <style>
 /* 版面：左邊是大大的地底地圖，右邊是這一回合要做的事；窄螢幕時上下排。刻意只做一種暗色地底風格。 */
 :root{
@@ -23,6 +23,7 @@
   --good:#6fcf7a; --bad:#ef6a5f;
   --t1:#f2b84b; --t2:#4fd1c5; --t3:#f28bb0; --t4:#a3d65c;
   --display:"Baloo 2","Noto Sans TC",system-ui,sans-serif;
+  --logo:"Dela Gothic One","Noto Sans TC","PingFang TC",system-ui,sans-serif;
   --title:"LXGW WenKai TC","Noto Sans TC","PingFang TC",system-ui,sans-serif;
   --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
   color-scheme:dark;
@@ -34,7 +35,7 @@ button{font:inherit;color:inherit;cursor:pointer;border:0;background:none;touch-
 button:focus-visible,textarea:focus-visible{outline:3px solid var(--lamp);outline-offset:2px}
 .app{box-sizing:border-box;display:flex;flex-direction:column;min-height:100%;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 20px;gap:12px}
 header{display:flex;align-items:center;gap:12px 18px;flex-wrap:wrap}
-h1{margin:0;font-family:var(--title);font-weight:700;font-size:clamp(22px,2.9vw,32px);letter-spacing:.06em;display:flex;align-items:center;gap:12px}
+h1{margin:0;font-family:var(--logo);font-weight:400;font-size:clamp(22px,2.9vw,32px);letter-spacing:.06em;display:flex;align-items:center;gap:12px}
 h1 .tt{background:linear-gradient(180deg,#fff1c4 0%,#f7c862 55%,#c8862a 100%);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 2px 0 #3a230c) drop-shadow(0 0 14px #f2b84b55)}
 h1 .mascot{width:52px;height:52px;border-radius:50%;flex:none;object-fit:cover;border:3px solid var(--lamp);box-shadow:0 0 16px #f2b84b66}
 .hello{display:grid;grid-template-columns:84px 1fr;gap:14px;align-items:center}
@@ -225,7 +226,7 @@ textarea{width:100%;min-height:180px;border-radius:12px;background:var(--bg);col
 .tcenter{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;gap:clamp(12px,3vh,26px);text-align:center;
   padding:max(5vh,env(safe-area-inset-top,0px),20px) max(16px,env(safe-area-inset-right,0px)) max(9vh,env(safe-area-inset-bottom,0px),40px) max(16px,env(safe-area-inset-left,0px))}
 .logo{display:flex;flex-direction:column;align-items:center;line-height:1;animation:logoIn 1.5s cubic-bezier(.2,.9,.2,1) both}
-.logo .l1,.logo .l2{font-family:var(--title);font-weight:700;letter-spacing:.08em;
+.logo .l1,.logo .l2{font-family:var(--logo);font-weight:400;letter-spacing:.05em;
   background:linear-gradient(100deg,#b8741f 0%,#ffd77a 20%,#fffaf0 28%,#ffd166 36%,#c8862a 55%,#ffe9a8 75%,#b8741f 100%);background-size:260% 100%;
   -webkit-background-clip:text;background-clip:text;color:transparent;
   filter:drop-shadow(0 3px 0 #6a3d12) drop-shadow(0 5px 0 #2a1606) drop-shadow(0 0 26px #f2b84b99);animation:shine 5.5s linear infinite}
