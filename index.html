@@ -308,12 +308,15 @@ body.stack .frame{max-width:min(100%,calc((100dvh - 400px) * var(--cols) / var(-
   .tools{gap:6px} .ghostbtn{padding:7px 11px;font-size:14px}
   .teams{order:3;grid-column:1/-1;flex-wrap:nowrap;overflow-x:auto;gap:6px;padding-bottom:2px;scrollbar-width:none}
   .teams::-webkit-scrollbar{display:none}
-  .chip{padding:3px 10px 3px 3px;gap:6px;flex:none}
+  .teams{display:grid;grid-template-columns:repeat(auto-fit,minmax(0,1fr));overflow:visible}
+  .chip{position:relative;padding:3px 8px 5px 3px;gap:6px;min-width:0;justify-content:space-between}
   .chip .tn{display:none}
   .chip .av{width:30px;height:30px}
   .chip .sc{font-size:18px}
-  .chip .prog{width:30px}
-  .chip .streak{font-size:11px;padding:0 5px}
+  .chip .prog{position:absolute;left:10px;right:10px;bottom:2px;width:auto;height:3px}
+  .chip .streak{position:absolute;top:-7px;right:-2px;font-size:10px;padding:0 5px;line-height:1.5}
+  .chip.on{transform:none}
+  .stage:has(#go) > h2{display:none}
   main{display:block}
   .frame{padding:8px;border-radius:14px;max-width:min(100%,calc((100dvh - var(--dock,220px) - 130px) * var(--cols) / var(--rows) + 16px));margin:0 auto}
   .frame{background:linear-gradient(180deg,#ffffff10,#00000030),url("img/wood.jpg") center/220px}
@@ -372,9 +375,12 @@ body.stack .frame{max-width:min(100%,calc((100dvh - 400px) * var(--cols) / var(-
   /* 選角色：上方大聚光燈，下方小頭像四欄 */
   .selwrap{gap:10px}
   .selhead h2{font-size:20px}
-  .slots{flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start;scrollbar-width:none}
-  .slot{min-width:auto;flex:none;grid-template-columns:40px auto;padding:4px 12px 4px 4px}
-  .slot img,.slot .q{width:40px;height:40px}
+  .slots{flex-wrap:nowrap;gap:6px}
+  .slot{min-width:0;flex:1 1 0;grid-template-columns:1fr;justify-items:center;text-align:center;row-gap:2px;padding:6px 4px;border-radius:14px}
+  .slot img,.slot .q{grid-row:auto;width:40px;height:40px;border-radius:50%}
+  .slot b{font-size:12px} .slot small{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .selwrap{grid-template-rows:auto auto auto 1fr}
+  .selfoot{align-self:end;align-items:flex-end}
   .spot{flex-direction:column}
   .spimg{width:150px}
   .spot>div:not(.spimg){text-align:center}
@@ -384,7 +390,8 @@ body.stack .frame{max-width:min(100%,calc((100dvh - 400px) * var(--cols) / var(-
   .card .cn{font-size:13px;bottom:4px}
   .card .own{font-size:10px;padding:1px 6px;top:4px;left:4px}
   .card:hover,.card:focus-visible{transform:none}
-  .selfoot .big{width:100%}
+  .selfoot .big{width:100%;font-size:24px;padding:14px}
+  .spimg{width:min(150px,36vw)}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
@@ -1043,7 +1050,7 @@ $("selGo").onclick=()=>wipe(()=>{ newGame(loadSettings(),SEL.picks.slice()); sho
 $("btnMenu").onclick=()=>{
   const draw=()=>showModal(`<h2>暫停</h2><div class="pmenu">
     <button class="big" id="pmResume" type="button">繼續遊戲</button>
-    <div class="two"><button class="small" id="pmRestart" type="button">同樣角色再玩一局</button><button class="small" id="pmChars" type="button">換角色重新開始</button></div>
+    <div class="two"><button class="small" id="pmRestart" type="button">同角色再玩</button><button class="small" id="pmChars" type="button">換角色重玩</button></div>
     <div class="two"><button class="small" id="pmMusic" type="button">音樂：${AU.on?"開":"關"}</button><button class="small" id="pmSfx" type="button">音效：${AU.sfx?"開":"關"}</button></div>
     <div class="two"><button class="small" id="pmSetup" type="button">遊戲設定</button><button class="small" id="pmTitle" type="button">回主選單</button></div></div>`,()=>{
     $("pmResume").onclick=closeModal;
