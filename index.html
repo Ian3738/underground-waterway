@@ -574,6 +574,17 @@ function parseWords(text){
   }
   return out;
 }
+const TILE_BAG=[5,5,5,3,3,3,7,7,7,15]; // 直管、彎管、三通各三張，十字一張
+const tileType=m=>{ let b=m,x=m; for(let k=0;k<3;k++){ x=rot(x); b=Math.min(b,x); } return b; };
+function drawTile(o,hand,skip){
+  if(!o.tb||!o.tb.length) o.tb=shuffle(TILE_BAG.slice());
+  const others=(hand||[]).filter((_,i)=>i!==skip).map(tileType);
+  let idx=o.tb.length-1;
+  for(let k=o.tb.length-1;k>=0;k--){ const t=o.tb[k]; if(others.filter(x=>x===t).length<1){ idx=k; break; } }
+  let m=o.tb.splice(idx,1)[0]; for(let r=rnd(4);r>0;r--) m=rot(m); return m;
+}
+function dealHand(o){ const h=[]; for(let k=0;k<4;k++) h.push(drawTile(o,h,-1)); return h; }
+function newTile(){ const o=(S.play==="net"||S.play==="speed")?S.teams[S.actor]:S; return drawTile(o,S.hand,S.sel); }
 function randTile(){
   const r=Math.random(); let m;
   if(r<.30) m=5; else if(r<.62) m=3; else if(r<.83) m=7; else if(r<.95) m=15; else m=1;
@@ -598,10 +609,11 @@ function newGame(settings,picks){
   S={v:4,picks:picks||null,cols,rows,grid,starts,race,lanes,
      teams:Array.from({length:n},(_,i)=>({name:n===1?"全班":TEAM_NAMES[i],img:(picks&&picks[i])||(n===1?"miner":"char"+(i+1)),cname:(charOf((picks&&picks[i])||"")||{}).name||"",color:TEAM_COLORS[i],score:0,streak:0,thrown:false})),
      cur:0,actor:0,turn:0,phase:"idle",pick:null,free:false,bonus:false,buzzing:false,
-     hand:[randTile(),randTile(),randTile(),randTile()],sel:0,
+     hand:[],sel:0,
      words:parseWords(st.words),bag:[],peek:null,winner:null,settings:st,
      play:race?(st.play||"turn"):"turn",round:0,queue:[],q:null,reveal:null,ev:null};
-  S.teams.forEach(t=>{t.hand=[randTile(),randTile(),randTile(),randTile()]; t.acts=0; t.ans=null; t.seq=0;});
+  S.hand=dealHand(S); S.actions=0; S.gid=Date.now();
+  S.teams.forEach(t=>{t.hand=dealHand(t); t.acts=0; t.ans=null; t.seq=0;});
   if(S.words.length<4) S.words=parseWords(DEFAULT_WORDS);
   prevWet=new Set(); lastScores=[]; render();
 }
@@ -746,7 +758,7 @@ function render(){
   // 回合卡
   const E=evEvery(), left=E-(S.turn%E);
   const a=S.teams[S.actor];
-  const modeName=S.race?(S.play==="sync"?"分道比賽・同時作答":S.play==="net"?`平板連線・房間 ${NET.room||"－"}`:"分道比賽"):"全班合作";
+  const modeName=S.race?(S.play==="sync"?"分道比賽・同時作答":S.play==="net"?`平板連線・房間 ${NET.room||"－"}`:S.play==="speed"?`速度賽・房間 ${NET.room||"－"}`:"分道比賽"):"全班合作";
   if(S.play!=="turn"&&S.phase!=="over"&&!(S.play==="sync"&&["action","place","pick"].includes(S.phase))){ syncTurnBox(modeName,E,left); renderStage(mine.wet,lane); return; }
   $("turnBox").style.setProperty("--c",S.phase==="over"&&S.winner!=null?S.teams[S.winner].color:(S.buzzing?a.color:t.color));
   const who=S.phase==="over"&&S.winner!=null?S.teams[S.winner]:(S.buzzing?a:t);
@@ -759,7 +771,7 @@ function render(){
 }
 function renderStage(wet,lane){
   if(NET.role==="client"&&!["action","place","pick"].includes(S.phase)) return clientStage();
-  if(S.play==="net"&&NET.role!=="client"&&S.phase!=="over") return hostStage();
+  if((S.play==="net"||S.play==="speed")&&NET.role!=="client"&&S.phase!=="over") return hostStage();
   if(S.play==="sync"&&S.phase==="idle") return syncIdleStage();
   const st=$("stage"); const t=S.teams[S.cur], a=S.teams[S.actor];
   if(S.phase==="idle"){
@@ -791,7 +803,7 @@ function renderStage(wet,lane){
       <div class="row"><button class="small" id="rotate" type="button">轉一下</button><button class="small" id="swap" type="button">換一張（結束）</button><button class="small" id="back" type="button">回上一步</button></div>`;
     st.querySelectorAll(".tile").forEach(btn=>btn.onclick=()=>{const i=+btn.dataset.h; if(i===S.sel) S.hand[i]=rot(S.hand[i]); else S.sel=i; render();});
     $("rotate").onclick=()=>{S.hand[S.sel]=rot(S.hand[S.sel]);render();};
-    $("swap").onclick=()=>{ if(NET.role==="client"){ netSend({a:"swap",h:S.sel}); return; } S.hand[S.sel]=randTile();toast("換了一張新的水管");endAction();};
+    $("swap").onclick=()=>{ if(NET.role==="client"){ netSend({a:"swap",h:S.sel}); return; } S.hand[S.sel]=newTile();toast("換了一張新的水管");endAction();};
     $("back").onclick=()=>{S.phase="action";render();};
   } else if(S.phase==="pick"){
     const txt={repair:["修水管","點有紅色裂痕的水管，就能修好。"],rock:["敲掉石頭","點一顆擋路的石頭，把它敲掉。"],
@@ -817,7 +829,7 @@ function onCell(i){
   const lane=myLane(); const {wet}=network(lane); const a=S.teams[S.actor];
   if(S.phase==="place"){
     const m=S.hand[S.sel]; if(!canPlace(i,m,wet,lane)) return;
-    S.grid[i]={type:"pipe",mask:m,broken:false}; S.hand[S.sel]=randTile(); sfx("place");
+    S.grid[i]={type:"pipe",mask:m,broken:false}; S.hand[S.sel]=newTile(); sfx("place");
     afterBuild();
   } else if(S.phase==="pick"){
     if(!candidates(S.pick,lane).includes(i)) return;
@@ -859,7 +871,7 @@ function afterBuild(){
 /* ---------- 回合與事件 ---------- */
 function endAction(){
   if(S.phase==="over") return;
-  if(S.play==="net"){ netEndAct(); return; }
+  if(S.play==="net"||S.play==="speed"){ netEndAct(); return; }
   const a=S.teams[S.actor];
   if(S.settings.combo&&a.streak>=3&&!S.bonus){ a.streak=0; S.bonus=true; S.phase="action"; S.pick=null; render(); toast("連對三題！再做一件事"); return; }
   S.bonus=false;
@@ -981,9 +993,10 @@ function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;","
 const NET_DB="https://heart-tetris-battle-default-rtdb.asia-southeast1.firebasedatabase.app";
 const JOIN_URL="https://ian3738.github.io/underground-waterway/";
 const NET={role:null,room:null,es:null,seen:new Set(),joined:{},ans:null,qText:"",pubT:null,pv:0,chain:Promise.resolve(),
-  me:null,sent:0,sentAt:0,lastRaw:null,lastQ:null,lastEv:null,lastRev:null,myAns:{},qStart:{},cdT:null,inGame:false,picking:false,lobby:false,got:false,joinT:null,endT:null};
+  me:null,sent:0,sentAt:0,lastRaw:null,lastQ:null,lastEv:null,lastRev:null,myAns:{},qStart:{},cdT:null,inGame:false,picking:false,lobby:false,got:false,joinT:null,endT:null,credit:0,streak:0,lastS:0,refund:{},sq:null,sqRes:null,wbag:null,lastW:null,didAct:false};
 const LET=["A","B","C","D"];
 function chipOn(i){ if(S.phase==="over"||S.phase==="c_over") return false;
+  if(S.play==="speed") return NET.role==="client"&&i===NET.me;
   if(S.play==="net") return S.phase==="build"||S.phase==="c_build"||S.phase==="c_sent"||["action","place","pick"].includes(S.phase)&&NET.role==="client"?S.teams[i].acts>0:false;
   if(S.play==="sync") return ["action","place","pick"].includes(S.phase)&&i===S.actor;
   return i===S.cur; }
@@ -993,10 +1006,11 @@ function chipMark(i){ const t=S.teams[i]; const ask=S.phase==="ask"||S.phase==="
   if(S.play==="sync"&&["action","place","pick"].includes(S.phase)&&S.queue.includes(i)) return `<span class="mk">等一下</span>`;
   return ""; }
 function syncTurnBox(modeName,E,left){
+  if(S.play==="speed"){ E=SPEED_EV; left=E-((S.actions||0)%E); }
   const me=NET.role==="client"&&NET.me!=null?S.teams[NET.me]:null; const ph=String(S.phase).replace("c_","");
-  const sub=ph==="ask"?"大家一起作答中":["action","place","pick"].includes(ph)?"答對了，換你們挖水道":ph==="build"||ph==="sent"?"答對的組正在挖水道":"全部的組一起答同一題";
+  const sub=S.play==="speed"?(ph==="speed"||ph==="q"||ph==="sent"?"速度賽進行中，答對就挖":["action","place","pick"].includes(ph)?"答對了，快挖！":ph==="pause"?"暫停中":"等老師按開始"):ph==="ask"?"大家一起作答中":["action","place","pick"].includes(ph)?"答對了，換你們挖水道":ph==="build"||ph==="sent"?"答對的組正在挖水道":"全部的組一起答同一題";
   $("turnBox").style.setProperty("--c",me?me.color:"var(--lamp)");
-  $("turnBox").innerHTML=`<div class="tp"><img class="tport" src="img/${me?me.img:"miner"}.jpg" alt=""><div class="tpt"><div class="sub">${modeName}</div><div class="who">${me?me.name+`<span class="whoc">${me.cname||""}</span>`:`第 ${S.round+1} 輪`}</div><div class="sub">${me?`第 ${S.round+1} 輪・`:""}${sub}</div><div class="meter">地底事件 ${E<=6?[...Array(E)].map((_,k)=>`<i class="${k<E-left?"f":""}"></i>`).join(""):""} 再 ${left} 輪</div></div></div>`;
+  $("turnBox").innerHTML=`<div class="tp"><img class="tport" src="img/${me?me.img:"miner"}.jpg" alt=""><div class="tpt"><div class="sub">${modeName}</div><div class="who">${me?me.name+`<span class="whoc">${me.cname||""}</span>`:S.play==="speed"?"速度賽":`第 ${S.round+1} 輪`}</div><div class="sub">${me&&S.play!=="speed"?`第 ${S.round+1} 輪・`:""}${sub}</div><div class="meter">地底事件 ${E<=8?[...Array(E)].map((_,k)=>`<i class="${k<E-left?"f":""}"></i>`).join(""):""} 再 ${left} ${S.play==="speed"?"次挖掘":"輪"}</div></div></div>`;
 }
 function roundReset(){ S.turn++; S.round++; S.phase="idle"; S.pick=null; S.sel=0; S.bonus=false; S.buzzing=false; S.queue=[]; S.q=null; S.reveal=null;
   S.teams.forEach(t=>{t.acts=0; t.ans=null; t.ok=null;}); }
@@ -1038,7 +1052,7 @@ function netListen(url,cb){ const es=new EventSource(url); NET.es=es;
   const h=e=>{ let d; try{d=JSON.parse(e.data);}catch(x){return;} if(d) cb(d.path,d.data,e.type); };
   es.addEventListener("put",h); es.addEventListener("patch",h); }
 function netPublish(){ if(NET.role!=="host"||!NET.room) return; clearTimeout(NET.pubT); NET.pubT=setTimeout(()=>{
-  const o=Object.assign({},S,{words:null,bag:null,settings:Object.assign({},S.settings,{words:""}),pv:++NET.pv}); const body=JSON.stringify(JSON.stringify(o)); const url=netURL("state");
+  const o=Object.assign({},S,{words:S.play==="speed"?S.words:null,bag:null,settings:Object.assign({},S.settings,{words:""}),pv:++NET.pv}); const body=JSON.stringify(JSON.stringify(o)); const url=netURL("state");
   NET.chain=NET.chain.then(()=>fetch(url,{method:"PUT",body}).then(r=>{ if(!r.ok) throw 0; }).catch(()=>toast("連線不穩，平板可能慢一點更新")));
  },60); }
 function netClose(){
@@ -1049,7 +1063,7 @@ function netClose(){
   NET.role=null; NET.room=null; NET.joined={}; NET.inGame=false; NET.picking=false; NET.lobby=false; NET.me=null; NET.got=false;
 }
 window.addEventListener("pagehide",()=>{ if(NET.role==="host"&&NET.room){ try{ fetch(netURL("state"),{method:"DELETE",keepalive:true}); fetch(netURL("inbox"),{method:"DELETE",keepalive:true}); }catch(e){} } });
-function ensureNet(){ if(S.play==="net"){ if(!(NET.role==="host"&&NET.room)) netHost(); } else if(NET.role==="host") netClose(); }
+function ensureNet(){ if(S.play==="net"||S.play==="speed"){ if(!(NET.role==="host"&&NET.room)) netHost(); } else if(NET.role==="host") netClose(); }
 
 /* 平板連線：大螢幕 */
 async function netHost(){
@@ -1068,21 +1082,26 @@ function onInbox(path,data){
     fetch(netURL("inbox/"+id),{method:"DELETE"}).catch(()=>{}); let m; try{m=JSON.parse(v);}catch(e){continue;} try{ hostMsg(m); }catch(e){ console.error(e); } }
 }
 function hostMsg(m){
-  if(!S||S.play!=="net") return; const t=m.t|0, tm=S.teams[t]; if(!tm) return;
+  if(!S||(S.play!=="net"&&S.play!=="speed")) return; const t=m.t|0, tm=S.teams[t]; if(!tm) return; const speed=S.play==="speed";
+  if(m.a==="star"){ if(speed&&S.phase==="speed"){ tm.score+=1; render(); } return; }
   if(m.a==="hi"){ const first=!NET.joined[t]; NET.joined[t]=(NET.joined[t]||0)+1; if(first) sfx("click"); if(NET.lobby) netLobby(); else if(first) toast(`${tm.name}的平板連上了`); render(); return; }
   if(m.a==="ans"){ if(S.phase!=="ask"||!S.q||m.q!==S.q.id||tm.ans!=null) return; tm.ans=Math.max(0,Math.min(3,m.k|0)); sfx("click"); render(); netAskStatus();
     if(S.teams.every(x=>x.ans!=null)) setTimeout(netReveal,500); return; }
   tm.seq=Math.max(tm.seq||0,+m.s||0);
-  if(S.phase!=="build"||tm.acts<=0){ render(); return; }
+  if(speed?S.phase!=="speed":(S.phase!=="build"||tm.acts<=0)){ tm.rej=+m.s||0; render(); return; }
+  NET.didAct=false;
   S.actor=S.cur=t; S.hand=tm.hand; S.bonus=false; S.buzzing=false; S.pick=null;
   const h=Math.max(0,Math.min(3,m.h|0)), i=m.i|0;
-  if(m.a==="swap"){ tm.hand[h]=randTile(); toast(`${tm.name}換了一張水管`); netEndAct(); return; }
+  if(m.a==="swap"){ tm.hand[h]=drawTile(tm,tm.hand,h); toast(`${tm.name}換了一張水管`); netEndAct(); return; }
   if(m.a==="place"){ let mm=tm.hand[h], ok=false; for(let k=0;k<4;k++){ if(mm===(m.m|0)) ok=true; mm=rot(mm); } if(ok){ tm.hand[h]=m.m|0; S.sel=h; S.phase="place"; onCell(i); } }
   else if(["repair","rock","remove","peek","throw"].includes(m.a)&&!(m.a==="throw"&&(!S.settings.throwRock||tm.thrown))){ S.phase="pick"; S.pick=m.a; onCell(i); }
-  if(S.phase==="place"||S.phase==="pick"){ S.phase="build"; S.pick=null; }
+  if(S.phase==="place"||S.phase==="pick"){ S.phase=speed?"speed":"build"; S.pick=null; }
+  if(!NET.didAct&&S.phase!=="over") tm.rej=+m.s||0;
   render();
 }
-function netEndAct(){ const tm=S.teams[S.actor]; tm.acts=Math.max(0,tm.acts-1); S.phase="build"; S.pick=null; render();
+function netEndAct(){ NET.didAct=true;
+  if(S.play==="speed"){ S.phase="speed"; S.pick=null; S.actions=(S.actions||0)+1; render(); if(S.actions%SPEED_EV===0) triggerEvent(); return; }
+  const tm=S.teams[S.actor]; tm.acts=Math.max(0,tm.acts-1); S.phase="build"; S.pick=null; render();
   if(S.teams.every(t=>t.acts<=0)){ clearTimeout(NET.endT); NET.endT=setTimeout(()=>{ if(S.phase==="build"&&S.teams.every(t=>t.acts<=0)){ closeModal(); nextTurn(); } },1500); } }
 function netAsk(){
   const q=makeQuestion(); NET.ans=q.opts.indexOf(q.ans); NET.qText=q.ans; NET.qT0=performance.now();
@@ -1113,6 +1132,7 @@ function hostStage(){
   const st=$("stage");
   if(!NET.room){ st.innerHTML=`<h2>平板連線</h2><p>${NET.role==="host"?"正在開房間…":"還沒連上網路。"}</p>${NET.role!=="host"?`<button class="big" id="go" type="button">重新連線</button>`:""}`; const g=$("go"); if(g) g.onclick=netHost; return; }
   const n=Object.keys(NET.joined).length;
+  if(S.play==="speed") return speedHostStage(st);
   if(S.phase==="ask"){ st.innerHTML=`<h2>大家作答中</h2><p>等各組在平板上選好答案，全部答完會自動公布。</p><button class="big" id="go" type="button">打開題目</button>`; $("go").onclick=netAskModal; return; }
   if(S.phase==="build"){ const busy=S.teams.filter(t=>t.acts>0);
     st.innerHTML=`<h2>${busy.length?"答對的組正在挖水道":"這一輪結束了"}</h2><p>${busy.length?busy.map(t=>t.name).join("、")+"正在自己的平板上挖，地圖會即時更新。":"馬上進入下一輪…"}</p><div class="row"><button class="small" id="endR" type="button">結束這一輪</button></div>`;
@@ -1123,8 +1143,8 @@ function hostStage(){
 function netLobby(){
   if(!NET.room) return; const url=JOIN_URL+"?room="+NET.room;
   showModal(`<h2 style="text-align:center">用平板加入</h2><div class="room"><div class="qr" id="qr"></div><div><div style="color:var(--muted);font-weight:700">房間代碼</div><div class="code">${NET.room}</div><div class="url">用平板掃描條碼，或打開<br><b>${JOIN_URL.replace("https://","")}</b><br>按「平板加入」輸入代碼</div></div></div>
-    <div class="joined">${S.teams.map((t,i)=>`<span class="${NET.joined[i]?"on":""}" style="--c:${t.color}"><img src="img/${t.img}.jpg" alt="">${t.name}${NET.joined[i]?" 連上了":" 等待中"}</span>`).join("")}</div>
-    <div class="row"><button class="big" id="lgo" type="button" style="flex:1">${S.round===0&&S.phase==="idle"?"大家都連上了，開始！":"回到遊戲"}</button></div>`,()=>{ $("lgo").onclick=closeModal; drawQR(url); });
+    <div class="joined">${S.teams.map((t,i)=>`<span class="${NET.joined[i]?"on":""}" style="--c:${t.color}"><img src="img/${t.img}.jpg" alt="">${t.name}${NET.joined[i]?(S.play==="speed"?` ${NET.joined[i]} 台`:" 連上了"):" 等待中"}</span>`).join("")}</div>
+    <div class="row"><button class="big" id="lgo" type="button" style="flex:1">${S.play==="speed"&&S.phase==="idle"?"大家都連上了，開始比賽！":S.round===0&&S.phase==="idle"?"大家都連上了，開始！":"回到遊戲"}</button></div>`,()=>{ $("lgo").onclick=()=>{ closeModal(); if(S.play==="speed"&&S.phase==="idle") speedStart(); }; drawQR(url); });
   NET.lobby=true;
 }
 function drawQR(url){ const el=$("qr"); if(!el) return;
@@ -1153,12 +1173,20 @@ function sameHand(a,b){ return a&&b&&a.length===b.length&&a.every((m,i)=>{ let x
 function clientState(o){
   const prev=S&&S.__mine?S:null;
   if(NET.me!=null&&!o.teams[NET.me]) NET.me=null;
-  S=o; S.words=[]; S.bag=[]; S.peek=null;
+  S=o; S.words=o.words||[]; S.bag=[]; S.peek=null;
   if(NET.me==null){ S.actor=S.cur=0; S.phase="c_pick"; S.hand=S.teams[0].hand; if(!NET.picking){ NET.picking=true; pickTeam(); } return; }
   if(!NET.inGame){ NET.inGame=true; closeModal(); showScreen("game"); }
   const me=S.teams[NET.me];
-  S.actor=S.cur=NET.me; S.bonus=false; S.buzzing=false; S.__mine=true; S.__acts=me.acts;
+  S.actor=S.cur=NET.me; S.bonus=false; S.buzzing=false; S.__mine=true; S.__acts=me.acts; S.__credit=NET.credit;
   let ph="c_"+o.phase;
+  if(o.play==="speed"&&me.rej&&me.rej===NET.lastS&&!NET.refund[me.rej]){ NET.refund[me.rej]=1; NET.credit++; S.__credit=NET.credit; if(prev) toast("剛剛沒挖成功，再試一次"); }
+  if(o.gid!==NET.gid){ NET.gid=o.gid; NET.sent=0; NET.credit=0; NET.streak=0; NET.sq=null; NET.sqRes=null; S.__credit=0; }
+  if(o.play==="speed"&&(o.phase==="idle"||o.phase==="over")){ NET.credit=0; NET.streak=0; NET.sq=null; NET.sqRes=null; S.__credit=0; }
+  if(o.play==="speed"&&o.phase==="speed"){
+    if(NET.sent>(me.seq||0)) ph="c_sent";
+    else if(NET.credit>0){ if(prev&&["action","place","pick"].includes(prev.phase)&&prev.__credit===NET.credit){ ph=prev.phase; S.pick=prev.pick; S.sel=prev.sel||0; if(sameHand(prev.hand,me.hand)) me.hand=prev.hand.slice(); } else { ph="action"; S.sel=0; S.pick=null; } }
+    else ph="c_q";
+  }
   if(o.phase==="build"&&me.acts>0){
     if(NET.sent>(me.seq||0)) ph="c_sent";
     else if(prev&&["action","place","pick"].includes(prev.phase)&&prev.__acts===me.acts&&prev.round===o.round){ ph=prev.phase; S.pick=prev.pick; S.sel=prev.sel||0; if(sameHand(prev.hand,me.hand)) me.hand=prev.hand.slice(); }
@@ -1181,7 +1209,7 @@ function pickTeam(){
 }
 function netSend(m){
   m.t=NET.me;
-  if(m.a!=="ans"&&m.a!=="hi"){ m.s=Date.now(); NET.sent=m.s; NET.sentAt=m.s; S.phase="c_sent"; render();
+  if(m.a!=="ans"&&m.a!=="hi"&&m.a!=="star"){ m.s=Date.now(); NET.lastS=m.s; if(S.play==="speed") NET.credit=Math.max(0,NET.credit-1); NET.sent=m.s; NET.sentAt=m.s; S.phase="c_sent"; render();
     setTimeout(()=>{ if(NET.role==="client"&&NET.sent===m.s&&S&&S.phase==="c_sent"){ NET.sent=0; toast("好像沒送到，再做一次"); if(NET.lastRaw){ NET.pv--; const o=JSON.parse(NET.lastRaw); o.pv=NET.pv+1; clientState(o); NET.pv=o.pv; } } },6000); }
   fetch(netURL("inbox"),{method:"POST",body:JSON.stringify(JSON.stringify(m))}).then(r=>{ if(!r.ok) throw 0; }).catch(()=>toast("沒送出去，檢查一下網路"));
 }
@@ -1193,6 +1221,9 @@ function clientCell(i){
 function clientStage(){
   const st=$("stage"); const me=S.teams[NET.me]; const p=S.phase; clearInterval(NET.cdT);
   if(!me){ st.innerHTML=`<h2>選你們是哪一組</h2>`; return; }
+  if(S.play==="speed"&&p==="c_q") return speedQ(st);
+  if(S.play==="speed"&&p==="c_pause"){ st.innerHTML=`<h2>暫停一下</h2><p class="keep">看大螢幕，老師按「繼續」就能接著答。</p>`; return; }
+  if(S.play==="speed"&&p==="c_idle"){ st.innerHTML=`<h2>${me.name}準備好了！</h2><p class="keep">速度賽：老師按「開始比賽」後，平板會一直出題，答對就馬上挖，不用等別組。</p>`; return; }
   if(p==="c_ask"&&S.q){
     const mine=me.ans!=null?me.ans:NET.myAns[S.q.id];
     if(mine==null){
@@ -1220,6 +1251,42 @@ function clientMenu(){
 }
 
 
+/* 速度賽 */
+const SPEED_EV=8;
+function speedStart(){ if(S.play!=="speed"||S.phase!=="idle") return; S.phase="speed"; S.t0=Date.now(); sfx("event"); toast("速度賽開始！"); render(); }
+function speedHostStage(st){
+  if(S.phase==="idle"){ const n=Object.values(NET.joined).reduce((a,b)=>a+b,0);
+    st.innerHTML=`<h2>速度賽</h2><p>房間代碼 <b style="color:var(--lamp);font-size:1.3em;letter-spacing:.08em">${NET.room}</b>，已經有 ${n} 台平板連上。按「開始比賽」後，每台平板會自動出不同的題目，答對馬上挖，最先挖到寶藏的組贏。</p><button class="big" id="go" type="button">開始比賽</button><div class="row"><button class="small" id="lobby" type="button">顯示加入方式</button></div>`;
+    $("go").onclick=speedStart; $("lobby").onclick=netLobby; return; }
+  const run=S.phase==="speed";
+  st.innerHTML=`<h2>${run?"速度賽進行中！":"暫停中"}</h2><p>${run?"各組在自己的平板上一直答題，答對就馬上挖。看看哪一組最先把水接到寶藏！":"平板上的題目先停住，按「繼續」接著比。"}</p><div class="row"><button class="small" id="pz" type="button">${run?"暫停":"繼續"}</button><button class="small" id="lobby" type="button">顯示加入方式</button></div>`;
+  $("pz").onclick=()=>{ S.phase=run?"pause":"speed"; render(); }; $("lobby").onclick=netLobby;
+}
+function speedQuestion(){
+  const W=S.words&&S.words.length>=4?S.words:parseWords(DEFAULT_WORDS);
+  if(!NET.wbag||!NET.wbag.length||NET.wbagN!==W.length){ NET.wbag=shuffle(W.map((_,i)=>i)); NET.wbagN=W.length; }
+  let w=W[NET.wbag.pop()]; if(w.en===NET.lastW&&NET.wbag.length) w=W[NET.wbag.pop()]; NET.lastW=w.en;
+  const toEn=Math.random()<.5, key=toEn?"en":"zh", ans=w[key];
+  const pool=shuffle([...new Set(W.map(x=>x[key]).filter(v=>v!==ans))]).slice(0,3);
+  return {ans,toEn,opts:shuffle([ans,...pool]),t0:performance.now(),prompt:toEn?`「${esc(w.zh)}」的英文是？`:`<span class="en">${esc(w.en)}</span> 是什麼意思？`};
+}
+function clientRefresh(){ if(NET.lastRaw&&NET.role==="client") clientState(JSON.parse(NET.lastRaw)); }
+function speedAnswer(k){
+  const q=NET.sq; if(!q||NET.sqRes) return; clearInterval(NET.cdT);
+  const ok=k!=null&&q.opts[k]===q.ans; NET.sqRes={k,ok};
+  if(ok){ NET.credit++; NET.streak++; if(S.settings.combo&&NET.streak>=3){ NET.credit++; NET.streak=0; toast("連對三題！多挖一次"); } sfx("ok"); netSend({a:"star"}); }
+  else { NET.streak=0; sfx("no"); }
+  render();
+  setTimeout(()=>{ NET.sq=null; NET.sqRes=null; clientRefresh(); }, ok?650:1500);
+}
+function speedQ(st){
+  if(!NET.sq) NET.sq=speedQuestion();
+  const q=NET.sq, r=NET.sqRes, T=+S.settings.timer||0;
+  st.innerHTML=`<h2>${q.prompt}</h2>${T&&!r?`<div class="timebar" id="ctbar"><i id="ctb"></i></div>`:""}<div class="opts">${q.opts.map((o,k)=>`<button class="opt ${q.toEn?"en":""} ${r&&o===q.ans?"ok":""} ${r&&r.k===k&&!r.ok?"no":""}" data-k="${k}" type="button"${r?" disabled":""}><span class="lt">${LET[k]}</span>${esc(o)}</button>`).join("")}</div>${r?`<div class="res ${r.ok?"ok":"no"}">${r.ok?"答對了！快去挖":r.k==null?"時間到！下一題":"差一點！下一題"}</div>`:""}`;
+  if(!r){ st.querySelectorAll(".opt").forEach(b=>b.onclick=()=>speedAnswer(+b.dataset.k));
+    if(T){ NET.cdT=setInterval(()=>{ const tb=$("ctb"); if(!tb||NET.sq!==q){clearInterval(NET.cdT);return;} const left=Math.max(0,T-(performance.now()-q.t0)/1000); tb.style.width=(left/T*100)+"%"; $("ctbar").classList.toggle("low",left<=3); if(left<=0){ clearInterval(NET.cdT); speedAnswer(null); } },150); } }
+}
+
 /* ---------- 視窗 ---------- */
 function showModal(html,bind){ clearInterval(qTimer); NET.lobby=false; $("sheet").innerHTML=html; $("modal").hidden=false; bind&&bind(); const f=$("sheet").querySelector("button:not(:disabled)"); f&&f.focus({preventScroll:true}); }
 function closeModal(){ clearInterval(qTimer); $("modal").hidden=true; }
@@ -1234,11 +1301,12 @@ $("btnRules").onclick=()=>{
    : `<li>這一局是<b>全班合作</b>：左邊是水源，右邊有三張終點卡，只有一張底下藏著寶藏。</li>
       <li>水流到寶藏，全班一起過關，接通的那組多拿 3 顆星。</li>`;
   li+=(S.play==="sync"?`<li><b>同時作答</b>：每一輪全部的組一起答同一題。各組把答案（A、B、C、D）舉起來，老師在大螢幕點每一組的答案再公布。<b>答對</b>的組各拿 1 顆星，輪流挖一次。</li>`
+     :S.play==="speed"?`<li><b>速度賽</b>：每組用平板或手機加入房間，每一台都會自動出不同的題目。<b>答對</b>拿 1 顆星，馬上挖一次；答錯就換下一題。不用等別組，最先把水接到寶藏的組贏。</li>`
      :S.play==="net"?`<li><b>平板連線</b>：每組用一台平板或手機加入房間。每一輪大家在自己的平板上同時作答，<b>答對</b>的組拿 1 顆星，直接在平板上挖自己的水道，大螢幕即時更新。</li>`
      :`<li>各組輪流抽一題英文。<b>答對</b>拿 1 顆星，還可以挑一件事做；<b>答錯</b>就換下一組。</li>`)+`
     <li>可以做的事：接一段水管、修水管、敲掉石頭、拆掉一段水管，或探照終點（翻開一張終點卡，全班都看得到）${S.race&&s.throwRock?"；每組一局還能丟一次石頭給別組":""}。</li>
     <li>水管一定要接在<b>已經有水</b>的地方，而且開口不能朝向地圖外面${S.race?"或別組的跑道":""}，地圖上會發亮提示。流到石壁就換條路。</li>
-    <li>每 ${evEvery()} ${S.play!=="turn"?"輪":"回合"}地底會出事：可能落石、水管破掉，或撿到藏寶圖自動翻開一張石壁${S.race?"，每條跑道都一樣":""}。</li>`;
+    <li>${S.play==="speed"?`全部的組加起來每挖 ${SPEED_EV} 次`:`每 ${evEvery()} ${S.play!=="turn"?"輪":"回合"}`}地底會出事：可能落石、水管破掉，或撿到藏寶圖自動翻開一張石壁${S.race?"，每條跑道都一樣":""}。</li>`;
   if(s.timer) li+=`<li>每題限時 <b>${s.timer} 秒</b>，${Math.round(s.timer/3)} 秒內答對拿 2 顆星。</li>`;
   if(s.combo) li+=`<li><b>連勝獎勵</b>：同一組連對三題，可以多做一件事。</li>`;
   if(s.buzz&&S.teams.length>1&&S.play==="turn") li+=`<li><b>搶答回合</b>：每 ${BUZZ_EVERY} 回合來一題搶答，答對的組可以做一件事。</li>`;
@@ -1254,8 +1322,8 @@ $("btnSetup").onclick=()=>{
     showModal(`<h2>設定</h2>
     <div class="field"><label>遊戲方式</label>${seg("segM",[["coop","全班合作"],["race","分道比賽"]],st.mode)}
       <span class="hint">${race?"各組挖自己的跑道，最先把水接到寶藏的那組贏。":"全班一起挖一條水道，水流到寶藏就一起過關。"}</span></div>
-    ${race?`<div class="field"><label>進行方式</label>${seg("segP",[["turn","輪流答題"],["sync","同時作答"],["net","平板連線"]],st.play||"turn")}
-      <span class="hint">${({turn:"各組輪流答題，答對的組挖一次。",sync:"每一輪全部的組一起答同一題，各組舉牌，老師在大螢幕點各組的答案，答對的組都能挖。",net:"每組拿一台平板或手機加入房間，大家同時在自己的平板上作答、接自己的水管，大螢幕即時顯示。需要網路。"})[st.play||"turn"]}</span></div>`:""}
+    ${race?`<div class="field"><label>進行方式</label>${seg("segP",[["turn","輪流答題"],["sync","同時作答"],["net","平板連線"],["speed","速度賽"]],st.play||"turn")}
+      <span class="hint">${({turn:"各組輪流答題，答對的組挖一次。",sync:"每一輪全部的組一起答同一題，各組舉牌，老師在大螢幕點各組的答案，答對的組都能挖。",net:"每組拿一台平板或手機加入房間，大家同時在自己的平板上作答、接自己的水管，大螢幕即時顯示。需要網路。",speed:"每台平板自動出不同的題目，答對馬上挖，不用等別人，一直玩到有組挖到寶藏。每組可以用好幾台平板或手機。需要網路。"})[st.play||"turn"]}</span></div>`:""}
     <div class="field"><label>分幾組</label>${seg("segT",[[1,"全班一起",race],[2,"2 組"],[3,"3 組"],[4,"4 組"]],st.teams)}</div>
     <div class="field"><label>答題時間</label>${seg("segQ",[[0,"不限時"],[10,"10 秒"],[15,"15 秒"],[20,"20 秒"]],st.timer)}
       <span class="hint">限時的話，用三分之一的時間答對可以拿 2 顆星。</span></div>
@@ -1442,7 +1510,7 @@ labels();
 /* ---------- 開始 ---------- */
 ["source","cardback","treasure","wall","boulder","ev_rock","ev_pipe","ev_map","char1","char2","char3","char4","char5","char6","char7","char8","keyart"].forEach(n=>{const i=new Image();i.src=`img/${n}.jpg`;});
 function start(data){
-  if(data&&data.S&&data.S.v===4&&data.S.grid&&!data.S.__mine){S=data.S;S.peek=null;if(!S.play)S.play="turn";if(S.play==="net"){S.play="turn";S.settings.play="turn";}prevWet=new Set();render();showScreen("game");AU.cur="game";} else {newGame();showScreen("title");}
+  if(data&&data.S&&data.S.v===4&&data.S.grid&&!data.S.__mine){S=data.S;S.peek=null;if(!S.play)S.play="turn";if(S.play==="net"||S.play==="speed"){S.play="turn";S.settings.play="turn";}prevWet=new Set();render();showScreen("game");AU.cur="game";} else {newGame();showScreen("title");}
   const rm=(location.search.match(/[?&]room=(\d{4})/)||[])[1]; if(rm) setTimeout(()=>netJoin(rm),50);
 }
 try{ window.claude?.hot?.snapshot?.(()=>({S})); }catch(e){}
